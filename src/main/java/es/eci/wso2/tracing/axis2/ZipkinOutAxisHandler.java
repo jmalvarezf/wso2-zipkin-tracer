@@ -1,25 +1,12 @@
-package es.eci.wso2.tracing;
+package es.eci.wso2.tracing.axis2;
 
 import brave.Span;
-import brave.Tracing;
 import brave.http.HttpServerHandler;
-import brave.http.HttpTracing;
-import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
-import brave.sampler.Sampler;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.handlers.AbstractHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import zipkin2.reporter.AsyncReporter;
-import zipkin2.reporter.Reporter;
-import zipkin2.reporter.Sender;
-import zipkin2.reporter.okhttp3.OkHttpSender;
-
-import java.util.Locale;
 
 public class ZipkinOutAxisHandler extends AbstractHandler {
 
@@ -30,12 +17,13 @@ public class ZipkinOutAxisHandler extends AbstractHandler {
 
     @Override
     public InvocationResponse invoke(MessageContext messageContext) throws AxisFault {
-        log.warn("Invoking out handler for tracing");
-        if ((messageContext.getProperty("TRACE_HANDLER") != null) && (messageContext.getProperty("SERVER_SPAN") != null)) {
+        //esto se invoca CADA VEZ, luego hay que ver como trazar si es la petición tras synapse
+          log.warn("Invoking out handler for tracing");
+        if ((messageContext.getProperty("TRACE_HANDLER") != null) && (messageContext.getProperty("SERVER_SPAN") != null) && (messageContext.getProperty("CLOSE_SERVER_SPAN") != null && (Boolean) messageContext.getProperty("CLOSE_SERVER_SPAN"))) {
             HttpServerHandler handler = (HttpServerHandler) messageContext.getProperty("TRACE_HANDLER");
             Span serverSpan = (Span) messageContext.getProperty("SERVER_SPAN");
-            log.warn("Invoking tracer");
-            log.warn("Span: " + serverSpan);
+            log.warn("Closing server span");
+            log.warn("Server span: " + serverSpan);
             handler.handleSend(messageContext, null, serverSpan);
             //} catch (Exception e) {
             //    log.error("Error starting a span", e);

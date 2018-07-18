@@ -1,14 +1,15 @@
-package es.eci.wso2.tracing;
+package es.eci.wso2.tracing.axis2;
 
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import es.eci.wso2.tracing.Axis2ServerAdapter;
+import es.eci.wso2.tracing.LoggingReporter;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.handlers.AbstractHandler;
@@ -25,53 +26,49 @@ public class ZipkinInAxisHandler extends AbstractHandler {
 
     private static Log log = LogFactory.getLog(ZipkinInAxisHandler.class);
 
-    private final HttpTracing tracing;
+    private HttpTracing tracing;
 
-    private final Tracing braveTracing;
+    private Tracing braveTracing;
 
-    private final HttpServerHandler handler;
+    private HttpServerHandler handler;
 
-    private final CurrentTraceContext currentTraceContext;
+    private synchronized void initTracers(String serviceName, String zipkinUrl) {
+        if (handler == null) {
+            Sender sender = OkHttpSender.create(zipkinUrl + "/api/v2/spans");
+            Reporter reporter = AsyncReporter.create(sender);
 
-    public ZipkinInAxisHandler() {
-        super();
-        Sender sender = OkHttpSender.create("http://marathon-lb.azure.firefly.elcorteingles.es:10121/api/v2/spans");
-        Reporter reporter = AsyncReporter.create(sender);
-
-
-//        Propagation.Factory propagationFactory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY).addField("server").build();
-
-        // Now, create a Brave tracing component with the service name you want to see in Zipkin.
-        //   (the dependency is io.zipkin.brave:brave)
-        braveTracing = Tracing.newBuilder()
-                .localServiceName("api-manager")
-                .propagationFactory(B3Propagation.FACTORY)
-                .spanReporter(new LoggingReporter())
-                .supportsJoin(false)
+            braveTracing = Tracing.newBuilder()
+                    .localServiceName(serviceName)
+                    .propagationFactory(B3Propagation.FACTORY)
+                    .spanReporter(new LoggingReporter())
+                    .supportsJoin(false)
 //                .currentTraceContext()
-                .sampler(Sampler.ALWAYS_SAMPLE)
-                .build();
+                    .sampler(Sampler.ALWAYS_SAMPLE)
+                    .build();
 
-        // use this to create a Tracer
-        tracing = HttpTracing.create(braveTracing);
-        currentTraceContext = tracing.tracing().currentTraceContext();
-        handler = HttpServerHandler.create(tracing, new Axis2ServerAdapter());
-        //tracer = .tracing().tracer();
-        log.warn("End configuring tracer");
+            // use this to create a Tracer
+            tracing = HttpTracing.create(braveTracing);
+            handler = HttpServerHandler.create(tracing, new Axis2ServerAdapter());
+            log.warn("End configuring server tracer");
+        }
     }
 
     @Override
     public InvocationResponse invoke(MessageContext messageContext) throws AxisFault {
+        initTracers(messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter("serviceName").getValue().toString(), messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter("zipkinUrl").getValue().toString());
         log.warn("Invoking handler for tracing");
+        //log.warn("Parameter 2: " + moduleConfig.getParameter("serviceName"));
         Span span = null;
         if (messageContext.getProperty("HTTP_METHOD") != null) {
-            log.warn("Invoking tracer");
+            log.warn("Invoking server tracer");
             try {
                 TraceContext.Extractor extractor = braveTracing.propagation().extractor(MESSAGE_CONTEXT_GETTER);
                 span = handler.handleReceive(extractor, messageContext);
                 messageContext.setProperty("TRACE_HANDLER", handler);
                 messageContext.setProperty("SERVER_SPAN", span);
-                log.warn("Span: " + span + " " + span.isNoop());
+                log.warn("Server span: " + span);
                 //span.tag("http.path", "/kk");
                 //handler.handleSend(messageContext, null, span);
             } catch (Exception e) {
@@ -87,9 +84,9 @@ public class ZipkinInAxisHandler extends AbstractHandler {
                 @Override
                 public String get(MessageContext carrier, String key) {
                     if (carrier != null) {
-                        log.warn("Trying to get header: " + key);
+                        log.debug("Trying to get header: " + key);
                         java.util.Map<String, String> headers = (java.util.Map) carrier.getProperty(MessageContext.TRANSPORT_HEADERS);
-                        log.warn("Value: " + headers.get(key.toLowerCase(Locale.ROOT)));
+                        log.debug("Value: " + headers.get(key.toLowerCase(Locale.ROOT)));
                         return headers.get(key.toLowerCase(Locale.ROOT));
                     }
                     else {

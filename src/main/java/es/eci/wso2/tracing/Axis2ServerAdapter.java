@@ -12,7 +12,6 @@ public class Axis2ServerAdapter extends HttpServerAdapter<MessageContext, Messag
     @Override
     public String method(MessageContext req) {
         String method = req.getProperty("HTTP_METHOD").toString();
-        log.warn("Method: " + method);
         return method;
     }
 
@@ -20,14 +19,12 @@ public class Axis2ServerAdapter extends HttpServerAdapter<MessageContext, Messag
     public String url(MessageContext req) {
         java.util.Map<String, String> headers = (java.util.Map) req.getProperty(MessageContext.TRANSPORT_HEADERS);
         String url = headers.get("Host");
-        log.warn("Url: " + url);
-        return "http://" + url;
+        return "http://" + url + "/" + req.getProperty("REST_URL_POSTFIX").toString();
     }
 
     @Override
     public String requestHeader(MessageContext req, String key) {
         java.util.Map<String, String> headers = (java.util.Map) req.getProperty(MessageContext.TRANSPORT_HEADERS);
-        log.warn("Map: " + headers);
         return headers.get(key);
     }
 
@@ -37,7 +34,7 @@ public class Axis2ServerAdapter extends HttpServerAdapter<MessageContext, Messag
             return Integer.parseInt(resp.getProperty("HTTP_SC").toString());
         } else {
             log.warn("No response code found");
-            return 404;
+            return 0;
         }
     }
 }

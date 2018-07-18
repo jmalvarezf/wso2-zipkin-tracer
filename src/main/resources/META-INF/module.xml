@@ -1,11 +1,11 @@
-<module name="opentracingHandler">
+<module name="zipkinHandler">
     <InFlow>
-        <handler name="InFlowTracingHandler" class="es.eci.wso2.tracing.ZipkinInAxisHandler">
+        <handler name="InFlowTracingHandler" class="es.eci.wso2.tracing.axis2.ZipkinInAxisHandler">
             <order phase="Transport" />
         </handler>
     </InFlow>
     <OutFlow>
-        <handler name="OutFlowTracingHandler" class="es.eci.wso2.tracing.ZipkinOutAxisHandler">
+        <handler name="OutFlowTracingHandler" class="es.eci.wso2.tracing.axis2.ZipkinOutAxisHandler">
             <order phase="MessageOut" />
         </handler>
     </OutFlow>

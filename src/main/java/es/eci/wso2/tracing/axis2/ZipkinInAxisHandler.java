@@ -32,24 +32,33 @@ public class ZipkinInAxisHandler extends AbstractHandler {
 
     private HttpServerHandler handler;
 
-    private synchronized void initTracers(String serviceName, String zipkinUrl) {
+    private synchronized void initTracers(String serviceName, String zipkinUrl, String samplingRate) {
         if (handler == null) {
-            Sender sender = OkHttpSender.create(zipkinUrl + "/api/v2/spans");
-            Reporter reporter = AsyncReporter.create(sender);
-
-            braveTracing = Tracing.newBuilder()
-                    .localServiceName(serviceName)
-                    .propagationFactory(B3Propagation.FACTORY)
-                    .spanReporter(new LoggingReporter())
-                    .supportsJoin(false)
-//                .currentTraceContext()
-                    .sampler(Sampler.ALWAYS_SAMPLE)
-                    .build();
+            if (zipkinUrl == null) {
+                braveTracing = Tracing.newBuilder()
+                        .localServiceName(serviceName)
+                        .propagationFactory(B3Propagation.FACTORY)
+                        .spanReporter(new LoggingReporter())
+                        .supportsJoin(false)
+                        .sampler(samplingRate == null ? Sampler.ALWAYS_SAMPLE : Sampler.create(Float.parseFloat(samplingRate)))
+                        .build();
+            }
+            else {
+                Sender sender = OkHttpSender.create(zipkinUrl + "/api/v2/spans");
+                Reporter reporter = AsyncReporter.create(sender);
+                braveTracing = Tracing.newBuilder()
+                        .localServiceName(serviceName)
+                        .propagationFactory(B3Propagation.FACTORY)
+                        .spanReporter(reporter)
+                        .supportsJoin(false)
+                        .sampler(samplingRate == null ? Sampler.ALWAYS_SAMPLE : Sampler.create(Float.parseFloat(samplingRate)))
+                        .build();
+            }
 
             // use this to create a Tracer
             tracing = HttpTracing.create(braveTracing);
             handler = HttpServerHandler.create(tracing, new Axis2ServerAdapter());
-            log.warn("End configuring server tracer");
+            log.debug("End configuring server tracer");
         }
     }
 
@@ -57,23 +66,22 @@ public class ZipkinInAxisHandler extends AbstractHandler {
     public InvocationResponse invoke(MessageContext messageContext) throws AxisFault {
         initTracers(messageContext.getConfigurationContext()
                 .getAxisConfiguration().getParameter("serviceName").getValue().toString(), messageContext.getConfigurationContext()
-                .getAxisConfiguration().getParameter("zipkinUrl").getValue().toString());
-        log.warn("Invoking handler for tracing");
+                .getAxisConfiguration().getParameter("zipkinUrl") == null ? null : messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter("zipkinUrl").getValue().toString(), messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter("samplingRate").getValue().toString());
+        log.info("Invoking Axis2 In Handler for tracing");
         //log.warn("Parameter 2: " + moduleConfig.getParameter("serviceName"));
         Span span = null;
         if (messageContext.getProperty("HTTP_METHOD") != null) {
-            log.warn("Invoking server tracer");
+            log.debug("Invoking server tracer");
             try {
                 TraceContext.Extractor extractor = braveTracing.propagation().extractor(MESSAGE_CONTEXT_GETTER);
                 span = handler.handleReceive(extractor, messageContext);
                 messageContext.setProperty("TRACE_HANDLER", handler);
                 messageContext.setProperty("SERVER_SPAN", span);
-                log.warn("Server span: " + span);
-                //span.tag("http.path", "/kk");
-                //handler.handleSend(messageContext, null, span);
+                log.debug("Server span: " + span);
             } catch (Exception e) {
                 log.error("Error starting a span", e);
-                //handler.handleSend(messageContext, e, span);
             }
         }
         return InvocationResponse.CONTINUE;
@@ -90,7 +98,7 @@ public class ZipkinInAxisHandler extends AbstractHandler {
                         return headers.get(key.toLowerCase(Locale.ROOT));
                     }
                     else {
-                        log.warn("Message context is null");
+                        log.error("Message context is null");
                         return null;
                     }
                 }

@@ -30,10 +30,14 @@ public class Axis2ServerAdapter extends HttpServerAdapter<MessageContext, Messag
 
     @Override
     public Integer statusCode(MessageContext resp) {
-        if (resp.getProperty("HTTP_SC") != null) {
+        if (resp.getProperty("HTTP_SC") != null && resp.getProperty("HTTP_SC") instanceof String) {
             return Integer.parseInt(resp.getProperty("HTTP_SC").toString());
-        } else {
-            log.warn("No response code found");
+        }
+        else if (resp.getProperty("HTTP_SC") != null && resp.getProperty("HTTP_SC") instanceof Integer) {
+            return (Integer) resp.getProperty("HTTP_SC");
+        }
+        else {
+            log.error("No response code found");
             return 0;
         }
     }

@@ -18,18 +18,24 @@ public class ZipkinOutAxisHandler extends AbstractHandler {
     @Override
     public InvocationResponse invoke(MessageContext messageContext) throws AxisFault {
         //esto se invoca CADA VEZ, luego hay que ver como trazar si es la petición tras synapse
-          log.warn("Invoking out handler for tracing");
+        log.info("Invoking Axis2 Out Handler for tracing");
         if ((messageContext.getProperty("TRACE_HANDLER") != null) && (messageContext.getProperty("SERVER_SPAN") != null) && (messageContext.getProperty("CLOSE_SERVER_SPAN") != null && (Boolean) messageContext.getProperty("CLOSE_SERVER_SPAN"))) {
             HttpServerHandler handler = (HttpServerHandler) messageContext.getProperty("TRACE_HANDLER");
             Span serverSpan = (Span) messageContext.getProperty("SERVER_SPAN");
-            log.warn("Closing server span");
-            log.warn("Server span: " + serverSpan);
+            log.debug("Closing server span: " + serverSpan);
             handler.handleSend(messageContext, null, serverSpan);
-            //} catch (Exception e) {
-            //    log.error("Error starting a span", e);
-            //handler.handleSend(messageContext, e, span);
-            //}
         }
+//            else if ((messageContext.getProperty("CLOSE_SERVER_SPAN") instanceof String) && messageContext.getProperty("CLOSE_SERVER_SPAN").toString().equalsIgnoreCase("true")) {
+//                HttpServerHandler handler = (HttpServerHandler) messageContext.getProperty("TRACE_HANDLER");
+//                Span serverSpan = (Span) messageContext.getProperty("SERVER_SPAN");
+//                log.warn("Closing server span");
+//                log.warn("Server span: " + serverSpan);
+//            }
+        //} catch (Exception e) {
+        //    log.error("Error starting a span", e);
+        //handler.handleSend(messageContext, e, span);
+        //}
+
         return InvocationResponse.CONTINUE;
     }
 

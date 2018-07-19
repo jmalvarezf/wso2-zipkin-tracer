@@ -1,12 +1,17 @@
 package es.eci.wso2.tracing.synapse;
 
 import brave.http.HttpClientAdapter;
+import es.eci.wso2.tracing.Axis2ServerAdapter;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseConstants;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import java.util.Map;
 
 public class SynapseClientAdapter extends HttpClientAdapter<MessageContext, MessageContext> {
+
+    private static Log log = LogFactory.getLog(SynapseClientAdapter.class);
 
     @Override
     public String method(MessageContext messageContext) {
@@ -34,6 +39,15 @@ public class SynapseClientAdapter extends HttpClientAdapter<MessageContext, Mess
     public Integer statusCode(MessageContext messageContext) {
         org.apache.axis2.context.MessageContext axis2MC = ((Axis2MessageContext) messageContext).
                 getAxis2MessageContext();
-        return (Integer) axis2MC.getProperty(SynapseConstants.HTTP_SC);
+        if (axis2MC.getProperty("HTTP_SC") != null && axis2MC.getProperty("HTTP_SC") instanceof String) {
+            return Integer.parseInt(axis2MC.getProperty("HTTP_SC").toString());
+        }
+        else if (axis2MC.getProperty("HTTP_SC") != null && axis2MC.getProperty("HTTP_SC") instanceof Integer) {
+            return (Integer) axis2MC.getProperty("HTTP_SC");
+        }
+        else {
+            log.error("No response code found");
+            return 0;
+        }
     }
 }

@@ -8,7 +8,7 @@ import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import es.eci.wso2.tracing.Axis2ServerAdapter;
+import es.eci.wso2.tracing.Constants;
 import es.eci.wso2.tracing.LoggingReporter;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.context.MessageContext;
@@ -44,7 +44,7 @@ public class ZipkinInAxisHandler extends AbstractHandler {
                         .build();
             }
             else {
-                Sender sender = OkHttpSender.create(zipkinUrl + "/api/v2/spans");
+                Sender sender = OkHttpSender.create(zipkinUrl + Constants.ZIPKIN_API_V2_URL);
                 Reporter reporter = AsyncReporter.create(sender);
                 braveTracing = Tracing.newBuilder()
                         .localServiceName(serviceName)
@@ -65,20 +65,20 @@ public class ZipkinInAxisHandler extends AbstractHandler {
     @Override
     public InvocationResponse invoke(MessageContext messageContext) throws AxisFault {
         initTracers(messageContext.getConfigurationContext()
-                .getAxisConfiguration().getParameter("serviceName").getValue().toString(), messageContext.getConfigurationContext()
-                .getAxisConfiguration().getParameter("zipkinUrl") == null ? null : messageContext.getConfigurationContext()
-                .getAxisConfiguration().getParameter("zipkinUrl").getValue().toString(), messageContext.getConfigurationContext()
-                .getAxisConfiguration().getParameter("samplingRate").getValue().toString());
+                .getAxisConfiguration().getParameter(Constants.SERVICE_NAME_PARAMETER_NAME).getValue().toString(), messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter(Constants.ZIPKIN_URL_PARAMETER_NAME) == null ? null : messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter(Constants.ZIPKIN_URL_PARAMETER_NAME).getValue().toString(), messageContext.getConfigurationContext()
+                .getAxisConfiguration().getParameter(Constants.SAMPLING_RATE_PARAMETER_NAME).getValue().toString());
         log.info("Invoking Axis2 In Handler for tracing");
         //log.warn("Parameter 2: " + moduleConfig.getParameter("serviceName"));
         Span span = null;
-        if (messageContext.getProperty("HTTP_METHOD") != null) {
+        if (messageContext.getProperty(Constants.AXIS2_HTTP_METHOD_PROPERTY) != null) {
             log.debug("Invoking server tracer");
             try {
                 TraceContext.Extractor extractor = braveTracing.propagation().extractor(MESSAGE_CONTEXT_GETTER);
                 span = handler.handleReceive(extractor, messageContext);
-                messageContext.setProperty("TRACE_HANDLER", handler);
-                messageContext.setProperty("SERVER_SPAN", span);
+                messageContext.setProperty(Constants.TRACE_HANDLER_PROPERTY_NAME, handler);
+                messageContext.setProperty(Constants.SERVER_SPAN_PROPERTY_NAME, span);
                 log.debug("Server span: " + span);
             } catch (Exception e) {
                 log.error("Error starting a span", e);

@@ -13,6 +13,7 @@ import es.eci.wso2.tracing.LoggingReporter;
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.handlers.AbstractHandler;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import zipkin2.reporter.AsyncReporter;
@@ -79,6 +80,12 @@ public class ZipkinInAxisHandler extends AbstractHandler {
                 span = handler.handleReceive(extractor, messageContext);
                 messageContext.setProperty(Constants.TRACE_HANDLER_PROPERTY_NAME, handler);
                 messageContext.setProperty(Constants.SERVER_SPAN_PROPERTY_NAME, span);
+                java.util.Map<String, String> headers = (java.util.Map) messageContext.getProperty(org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS);
+                if (headers.containsKey(Constants.AUTHORIZATION_HEADER_NAME)) {
+                    span.tag(Constants.ACCESS_TOKEN_TAG_PROPERTY, (StringUtils.split(headers.get(Constants.AUTHORIZATION_HEADER_NAME)) != null && StringUtils
+                            .split(headers.get(Constants.AUTHORIZATION_HEADER_NAME)).length > 1) ?
+                            StringUtils.split(headers.get(Constants.AUTHORIZATION_HEADER_NAME))[1] : headers.get(Constants.AUTHORIZATION_HEADER_NAME));
+                }
                 log.debug("Server span: " + span);
             } catch (Exception e) {
                 log.error("Error starting a span", e);

@@ -65,7 +65,8 @@
                             zipkin2.*,
                             zipkin2.reporter.*,
                             brave.*,
-                            org.apache.synapse.*
+                            org.apache.synapse.*,
+                            org.apache.commons.lang.*
                         </Import-Package>
                         <Axis2Module>${project.artifactId}-${project.version}</Axis2Module>
                     </instructions>

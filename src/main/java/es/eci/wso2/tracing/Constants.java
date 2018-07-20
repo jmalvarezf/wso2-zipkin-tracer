@@ -22,5 +22,7 @@ public class Constants {
     public static final String ZIPKIN_URL_PARAMETER_NAME = "zipkinUrl";
     public static final String SERVICE_NAME_PARAMETER_NAME = "serviceName";
     public static final String SAMPLING_RATE_PARAMETER_NAME = "samplingRate";
+    public static final String AUTHORIZATION_HEADER_NAME = "Authorization";
+    public static final String ACCESS_TOKEN_TAG_PROPERTY = "gateway.access.token";
     public static final String ZIPKIN_API_V2_URL = "/api/v2/spans";
 }

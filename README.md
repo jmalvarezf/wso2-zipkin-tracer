@@ -3,7 +3,7 @@
 This is an OSGI module that allows WSO2 to participate or start on a Trace and report it via log, or sent it to Zipkin asynchronously. It is based on the HTTP instrumentation provided by [Brave](https://github.com/openzipkin/brave/).
 There are two different spans that would be created here:
 
-* **Server trace**: it is created when the request for an API is received. It is created by the Axis2 chain, and configured in the axis2.xml file:
+* **Server trace**: it is created when the request for an API is received. It is created by the Axis2 chain, and configured in the axis2.xml file. You would need to add these:
 
 `<parameter name="serviceName" locked="false">##serviceName##</parameter>`
 `<parameter name="zipkinUrl" locked="false">##zipkinUrl##</parameter>`
